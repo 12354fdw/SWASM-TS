@@ -75,6 +75,6 @@ export class ExprCompiler {
 				case ts.SyntaxKind.TildeToken: return { type: "unary", op: "bnot", expr };								// ~
 				default: throw Error(`Unsupported binary expression: '${ts.SyntaxKind[node.operator].toString()}'!`);
 			}
-			/* eslint-enable prettier/prettier */
+		/* eslint-enable prettier/prettier */
 	}
 }
