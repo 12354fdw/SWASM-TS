@@ -125,7 +125,7 @@ export class registerPhase {
 		if (!ts.isModuleBlock(body)) return; // how is it not a moduleBlock?????
 
 		this.namespaceStack.push(node.name.text);
-		this.getNamespaceWrapper().name = node.name.text;
+		this.getNamespaceWrapper().name = this.getCurrentNamespaceKey();
 		this.registerStatements(body.statements);
 		this.namespaceStack.pop();
 	}
