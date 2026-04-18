@@ -1,4 +1,5 @@
 import { Emitter } from "./emitter";
+import { MAIN_LABEL } from "./frontend";
 import { ClassIR, Expr, FuncIR, Stmt, SWTypes } from "./ir";
 import { Op } from "./opcode";
 
@@ -27,7 +28,7 @@ export class Lowerer {
 	public lower(classes: ClassIR[], functions: FuncIR[]): string {
 		// CALL __main
 		this.emitter.emitComment("CALL to topLevel code (__main)");
-		this.emitter.emitWithOperand(Op.CALL, "__main");
+		this.emitter.emitWithOperand(Op.CALL, MAIN_LABEL);
 		this.emitter.emit(Op.UNREACHABLE);
 
 		for (const fn of functions) {
@@ -47,7 +48,7 @@ export class Lowerer {
 
 	private lowerClass(cls: ClassIR) {
 		// creates the constructor
-		const ctorLabel = cls.name + "_ctor";
+		const ctorLabel = cls.name + "__CONSTRUCTOR";
 		this.emitter.emitLabel(ctorLabel);
 
 		const savedLocals = new Map(this.locals);
@@ -406,7 +407,7 @@ export class Lowerer {
 					this.lowerExpr(arg);
 				}
 				this.emitter.emitComment(`calling constructor for ${expr.className}`);
-				this.emitter.emitWithOperand(Op.CALL, expr.className + "_ctor");
+				this.emitter.emitWithOperand(Op.CALL, expr.ctorLabel);
 				break;
 			}
 		}

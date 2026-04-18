@@ -4,7 +4,7 @@ import { CompileContext } from "./compileContext";
 import { getClassIR, resolveFunction } from "../utils";
 
 export class ExprCompiler {
-	constructor(private readonly ctx: CompileContext) {
+	constructor(private ctx: CompileContext) {
 		ctx.exprCompiler = this;
 	}
 
@@ -70,9 +70,13 @@ export class ExprCompiler {
 		// new
 		if (ts.isNewExpression(node)) {
 			const className = (node.expression as ts.Identifier).text;
+			const cls = this.ctx.resolveClass(className);
+			if (!cls) throw Error(`Unknown class: ${className}`);
+
 			return {
 				type: "new",
 				className,
+				ctorLabel: cls.ctorLabel,
 				args: (node.arguments ?? []).map((a) => this.compile(a)),
 			};
 		}

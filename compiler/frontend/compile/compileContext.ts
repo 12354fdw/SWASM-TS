@@ -18,13 +18,13 @@ export class CompileContext {
 
 	public namespaceStack: string[] = [];
 
+	public readonly checker: ts.TypeChecker;
+
 	public exprCompiler!: ExprCompiler;
 	public stmtCompiler!: StmtCompiler;
-
-	public readonly checker: ts.TypeChecker;
-	funcCompiler: FunctionCompiler = new FunctionCompiler(this);
-	classCompiler: ClassCompiler = new ClassCompiler(this);
-	moduleCompiler: ModuleCompiler = new ModuleCompiler(this);
+	public funcCompiler!: FunctionCompiler;
+	public classCompiler!: ClassCompiler;
+	public moduleCompiler!: ModuleCompiler;
 
 	constructor(
 		public readonly program: ts.Program,
@@ -61,5 +61,24 @@ export class CompileContext {
 
 	public endScope() {
 		this.localScopes.pop();
+	}
+
+	// getters
+	public resolveFunction(name: string): FuncIR | null {
+		for (const [, ns] of this.registry) {
+			for (const [, func] of ns.functions) {
+				if (func.name.endsWith(`__${name}`)) return func;
+			}
+		}
+		return null;
+	}
+
+	public resolveClass(name: string): ClassIR | null {
+		for (const [, ns] of this.registry) {
+			for (const [, cls] of ns.classes) {
+				if (cls.name.endsWith(`__${name}`)) return cls;
+			}
+		}
+		return null;
 	}
 }

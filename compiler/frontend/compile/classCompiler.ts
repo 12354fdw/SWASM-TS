@@ -1,13 +1,14 @@
 import ts from "typescript";
 import { CompileContext } from "./compileContext";
-import { Stmt } from "../../ir";
+import { FuncIR, Stmt } from "../../ir";
 
 export class ClassCompiler {
 	constructor(private readonly ctx: CompileContext) {}
 
 	public compile(node: ts.ClassDeclaration) {
 		const name = node.name!.text;
-		const cls = this.ctx.getCurrentNS().classes.get(name)!;
+		const cls = this.ctx.resolveClass(name);
+		if (!cls) throw Error(`Unknown class: ${name}`);
 		const prev = this.ctx.currClass;
 		this.ctx.currClass = cls;
 
@@ -44,8 +45,19 @@ export class ClassCompiler {
 
 	private compileConstructor(member: ts.ConstructorDeclaration) {
 		const cls = this.ctx.currClass!;
-		const mangled = `NS__${this.ctx.getCurrentNS().name}__${cls.name}__CONSTRUCTOR`;
-		const func = this.ctx.getCurrentNS().functions.get(mangled)!;
+
+		// find the constructor func from the registry
+		let func: FuncIR | null = null;
+		for (const [, ns] of this.ctx.registry) {
+			for (const [, f] of ns.functions) {
+				if (f.name.endsWith(`__${cls.name}__CONSTRUCTOR`)) {
+					func = f;
+					break;
+				}
+			}
+			if (func) break;
+		}
+		if (!func) throw Error(`No constructor found for ${cls.name}`);
 
 		this.ctx.beginScope();
 		func.params.forEach((p) => this.ctx.declareLocal(p));

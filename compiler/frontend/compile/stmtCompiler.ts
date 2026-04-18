@@ -4,7 +4,7 @@ import { Stmt, Expr } from "../../ir";
 import { getClassIR } from "../utils";
 
 export class StmtCompiler {
-	constructor(private readonly ctx: CompileContext) {
+	constructor(private ctx: CompileContext) {
 		ctx.stmtCompiler = this;
 	}
 

@@ -1,4 +1,4 @@
-import { ClassIR, FuncIR, GlobalIR } from "../ir";
+import { ClassIR, FuncIR, GlobalIR, IRBuilder } from "../ir";
 import ts, { NodeArray } from "typescript";
 import { resolveNodeType } from "./utils";
 
@@ -16,6 +16,8 @@ export class registerPhase {
 	public namespaceRegistry: NamespaceRegistry = new Map();
 
 	private namespaceStack: string[] = [];
+
+	constructor(private readonly irBuilder: IRBuilder) {}
 
 	public register(statements: NodeArray<ts.Statement>) {
 		this.registerStatements(statements);
@@ -46,6 +48,7 @@ export class registerPhase {
 		};
 
 		this.getNamespaceWrapper().functions.set(name, func);
+		this.irBuilder.addFunction(func);
 	}
 
 	private registerGlobals(node: ts.VariableStatement) {
@@ -58,6 +61,7 @@ export class registerPhase {
 			};
 
 			this.getNamespaceWrapper().globals.set(name, global);
+			this.irBuilder.addGlobal(global);
 		}
 	}
 
@@ -71,6 +75,7 @@ export class registerPhase {
 			methods: new Map(),
 			parent: this.getParentName(node), // to be assigned in binding phase
 			constructorParams: ctor ? ctor.parameters.map((p) => (p.name as ts.Identifier).text) : [],
+			ctorLabel: `NS__${this.getCurrentNamespaceKey()}__${name}__CONSTRUCTOR`,
 		};
 
 		let fieldCounter = 1;
@@ -78,7 +83,7 @@ export class registerPhase {
 			if (ts.isPropertyDeclaration(member) && member.name) {
 				const fname = (member.name as ts.Identifier).text;
 				const ftype = resolveNodeType(member.type);
-				cls.fields.set(fname, { idx: fieldCounter++, type: ftype, name: member.name.getText() }); // idx is resolved in lowering phase
+				cls.fields.set(fname, { idx: fieldCounter++, type: ftype, name: member.name.getText() });
 			}
 
 			if (ts.isMethodDeclaration(member) && member.name) {
@@ -94,13 +99,32 @@ export class registerPhase {
 				};
 				this.getNamespaceWrapper().functions.set(mangled, func);
 
-				cls.methods.set(mname, { name: member.name.getText(), idx: fieldCounter++, func, methodName: name }); // idx is resolved in lowering phase
+				cls.methods.set(mname, { name: member.name.getText(), idx: fieldCounter++, func, methodName: name });
+				this.irBuilder.addFunction(func);
+			}
+		}
+
+		if (ctor) {
+			for (const param of ctor.parameters) {
+				const isParamProp = param.modifiers?.some(
+					(m) =>
+						m.kind === ts.SyntaxKind.PrivateKeyword ||
+						m.kind === ts.SyntaxKind.PublicKeyword ||
+						m.kind === ts.SyntaxKind.ProtectedKeyword ||
+						m.kind === ts.SyntaxKind.ReadonlyKeyword,
+				);
+				if (isParamProp) {
+					const fname = (param.name as ts.Identifier).text;
+					const ftype = resolveNodeType(param.type);
+					cls.fields.set(fname, { idx: fieldCounter++, type: ftype, name: fname });
+				}
 			}
 		}
 
 		if (ctor) this.registerConstructor(ctor, cls);
 
 		this.getNamespaceWrapper().classes.set(name, cls);
+		this.irBuilder.addClass(cls);
 	}
 
 	private registerConstructor(member: ts.ConstructorDeclaration, cls: ClassIR) {
@@ -116,6 +140,7 @@ export class registerPhase {
 		};
 
 		this.getNamespaceWrapper().functions.set(mangled, func);
+		this.irBuilder.addFunction(func);
 	}
 
 	private registerModule(node: ts.ModuleDeclaration) {

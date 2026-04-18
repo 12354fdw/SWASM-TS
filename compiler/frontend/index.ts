@@ -7,6 +7,13 @@ import { CompileContext } from "./compile/compileContext";
 import { registerPhase } from "./registerphase";
 import { bindPhase } from "./binder";
 import { $info } from "../logger";
+import { ClassCompiler } from "./compile/classCompiler";
+import { ExprCompiler } from "./compile/exprCompiler";
+import { FunctionCompiler } from "./compile/functionCompiler";
+import { ModuleCompiler } from "./compile/moduleCompiler";
+import { StmtCompiler } from "./compile/stmtCompiler";
+
+export const MAIN_LABEL = "__TOPLEVELCODE__";
 
 export class Codegen {
 	private irBuilder = new IRBuilder();
@@ -31,13 +38,19 @@ export class Codegen {
 
 	private compileSourceFile(src: ts.SourceFile) {
 		$info(`Compiling ${src.fileName}`);
-		const register = new registerPhase();
+
+		const register = new registerPhase(this.irBuilder);
 		register.register(src.statements);
 
 		const bind = new bindPhase(register.namespaceRegistry);
 		bind.bind();
 
 		this.ctx = new CompileContext(this.program, register.namespaceRegistry, this.irBuilder);
+		this.ctx.exprCompiler = new ExprCompiler(this.ctx);
+		this.ctx.stmtCompiler = new StmtCompiler(this.ctx);
+		this.ctx.funcCompiler = new FunctionCompiler(this.ctx);
+		this.ctx.classCompiler = new ClassCompiler(this.ctx);
+		this.ctx.moduleCompiler = new ModuleCompiler(this.ctx);
 
 		for (const stmt of src.statements) {
 			if (ts.isFunctionDeclaration(stmt)) this.ctx.funcCompiler.compile(stmt);
@@ -56,8 +69,8 @@ export class Codegen {
 		if (topLevel.length === 0) return;
 
 		const func: FuncIR = {
-			name: `NS__GLOBAL____main`,
-			label: `NS__GLOBAL____main`,
+			name: MAIN_LABEL,
+			label: MAIN_LABEL,
 			params: [],
 			returns: [],
 			body: [],
