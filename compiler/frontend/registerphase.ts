@@ -17,7 +17,7 @@ export class registerPhase {
 
 	private namespaceStack: string[] = [];
 
-	constructor(private readonly irBuilder: IRBuilder) { }
+	constructor(private readonly irBuilder: IRBuilder) {}
 
 	public register(statements: NodeArray<ts.Statement>) {
 		this.registerStatements(statements);
