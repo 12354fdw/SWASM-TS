@@ -81,8 +81,6 @@ export type ClassIR = {
 export type GlobalIR = {
 	name: string;
 	idx: number; // decided in bind phase
-	type: SWTypes;
-	initializer?: Expr;
 };
 
 export class IRBuilder {

@@ -22,6 +22,23 @@ export class ExprCompiler {
 			return { type: "boolean", value: false };
 		}
 
+		// variables
+		if (ts.isIdentifier(node)) {
+			if (this.ctx.isLocal(node.text)) {
+				return { type: "local", name: node.text };
+			}
+
+			const idx = this.ctx.getCurrentNS().globals.get(node.text)?.idx;
+			if (!idx) throw Error(`Unknown global '${this.ctx.getCurrentNS().name}.${node.text}'`);
+			return {
+				type: "global",
+				ref: {
+					name: node.text,
+					idx: idx,
+				},
+			};
+		}
+
 		// just unwrap it lol
 		if (ts.isParenthesizedExpression(node)) {
 			return this.compile(node.expression);

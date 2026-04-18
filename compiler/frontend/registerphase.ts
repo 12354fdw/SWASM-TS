@@ -5,6 +5,7 @@ import { resolveNodeType } from "./utils";
 export type NamespaceRegistry = Map<
 	string,
 	{
+		name: string;
 		functions: Map<string, FuncIR>;
 		classes: Map<string, ClassIR>;
 		globals: Map<string, GlobalIR>;
@@ -24,7 +25,8 @@ export class registerPhase {
 		statements.forEach((stmt: ts.Statement) => {
 			/* eslint-disable prettier/prettier */
 			if (ts.isFunctionDeclaration(stmt)) { this.registerFunction(stmt); return; }
-			if (ts.isClassDeclaration(stmt)) { this.registerClass(stmt); return;  }
+			if (ts.isVariableStatement(stmt)) { this.registerGlobals(stmt); return; }
+			if (ts.isClassDeclaration(stmt)) { this.registerClass(stmt); return; }
 			if (ts.isModuleDeclaration(stmt)) { this.registerModule(stmt); return; }
 			/* eslint-enable prettier/prettier */
 		});
@@ -44,6 +46,19 @@ export class registerPhase {
 		};
 
 		this.getNamespaceWrapper().functions.set(name, func);
+	}
+
+	private registerGlobals(node: ts.VariableStatement) {
+		for (const decl of node.declarationList.declarations) {
+			const name = (decl.name as ts.Identifier).text;
+
+			const global: GlobalIR = {
+				name,
+				idx: 0, // assigned in bind phase
+			};
+
+			this.getNamespaceWrapper().globals.set(name, global);
+		}
 	}
 
 	private registerClass(node: ts.ClassDeclaration) {
@@ -110,6 +125,7 @@ export class registerPhase {
 		if (!ts.isModuleBlock(body)) return; // how is it not a moduleBlock?????
 
 		this.namespaceStack.push(node.name.text);
+		this.getNamespaceWrapper().name = node.name.text;
 		this.registerStatements(body.statements);
 		this.namespaceStack.pop();
 	}
@@ -127,6 +143,7 @@ export class registerPhase {
 				functions: new Map(),
 				classes: new Map(),
 				globals: new Map(),
+				name: "",
 			};
 			this.namespaceRegistry.set(key, ns);
 		}

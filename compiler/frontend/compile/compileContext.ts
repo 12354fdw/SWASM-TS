@@ -5,7 +5,7 @@ import { ExprCompiler } from "./exprCompiler";
 import { StmtCompiler } from "./stmtCompiler";
 
 export class CompileContext {
-	public localNames = new Set<string>();
+	public localScopes: Set<string>[] = [new Set()];
 
 	public currFunc: FuncIR | null = null;
 	public currClass: ClassIR | null = null;
@@ -31,14 +31,26 @@ export class CompileContext {
 	}
 
 	public declareLocal(name: string) {
-		this.localNames.add(name);
+		this.localScopes[this.localScopes.length - 1].add(name);
 	}
 
 	public isLocal(name: string): boolean {
-		return this.localNames.has(name);
+		for (let i = this.localScopes.length - 1; i >= 0; i--) {
+			if (this.localScopes[i].has(name)) return true;
+		}
+		return false;
 	}
 
 	public resetLocals() {
-		this.localNames = new Set();
+		this.localScopes = [new Set()];
+	}
+
+	// scope begin and end
+	public beginScope() {
+		this.localScopes.push(new Set());
+	}
+
+	public endScope() {
+		this.localScopes.pop();
 	}
 }
