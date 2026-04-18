@@ -4,7 +4,9 @@ import { CompileContext } from "./compileContext";
 import { getClassIR, resolveFunction } from "../utils";
 
 export class ExprCompiler {
-	constructor(private readonly ctx: CompileContext) {}
+	constructor(private readonly ctx: CompileContext) {
+		ctx.exprCompiler = this;
+	}
 
 	public compile(node: ts.Expression): Expr {
 		// number literals
