@@ -48,8 +48,7 @@ export class Lowerer {
 
 	private lowerClass(cls: ClassIR) {
 		// creates the constructor
-		const ctorLabel = cls.name + "__CONSTRUCTOR";
-		this.emitter.emitLabel(ctorLabel);
+		this.emitter.emitLabel(cls.ctorLabel);
 
 		const savedLocals = new Map(this.locals);
 		const savedCount = this.localCount;
@@ -96,13 +95,10 @@ export class Lowerer {
 		if (cls.constructorParams && cls.constructorParams.length > 0) {
 			this.emitter.emitComment(`call constructor body`);
 			this.emitter.emit(Op.DUP);
-
-			// push original ctor args from locals
 			for (let i = 0; i < cls.constructorParams.length; i++) {
 				this.emitter.emitWithOperand(Op.LOCAL_GET, i + 1);
 			}
-
-			this.emitter.emitWithOperand(Op.CALL, `${cls.name}__CONSTRUCTOR`);
+			this.emitter.emitWithOperand(Op.CALL, `${cls.name}__CONSTRUCTOR_IMPL`);
 		}
 
 		this.locals = savedLocals;

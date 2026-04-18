@@ -17,7 +17,7 @@ export class registerPhase {
 
 	private namespaceStack: string[] = [];
 
-	constructor(private readonly irBuilder: IRBuilder) {}
+	constructor(private readonly irBuilder: IRBuilder) { }
 
 	public register(statements: NodeArray<ts.Statement>) {
 		this.registerStatements(statements);
@@ -75,7 +75,7 @@ export class registerPhase {
 			methods: new Map(),
 			parent: this.getParentName(node), // to be assigned in binding phase
 			constructorParams: ctor ? ctor.parameters.map((p) => (p.name as ts.Identifier).text) : [],
-			ctorLabel: `NS__${this.getCurrentNamespaceKey()}__${name}__CONSTRUCTOR`,
+			ctorLabel: `${name}__ctor`,
 		};
 
 		let fieldCounter = 1;
@@ -88,7 +88,7 @@ export class registerPhase {
 
 			if (ts.isMethodDeclaration(member) && member.name) {
 				const mname = (member.name as ts.Identifier).text;
-				const mangled = `NS__${this.getCurrentNamespaceKey()}__${name}__${mname}`;
+				const mangled = `${name}__${mname}`;
 				const func: FuncIR = {
 					name: mangled,
 					label: mangled,
@@ -128,7 +128,7 @@ export class registerPhase {
 	}
 
 	private registerConstructor(member: ts.ConstructorDeclaration, cls: ClassIR) {
-		const mangled = `NS__${this.getCurrentNamespaceKey()}__${cls.name}__CONSTRUCTOR`;
+		const mangled = `${cls.name}__CONSTRUCTOR_IMPL`;
 
 		const func: FuncIR = {
 			name: mangled,

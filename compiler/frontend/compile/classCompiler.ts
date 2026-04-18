@@ -1,6 +1,6 @@
 import ts from "typescript";
 import { CompileContext } from "./compileContext";
-import { FuncIR, Stmt } from "../../ir";
+import { Stmt } from "../../ir";
 
 export class ClassCompiler {
 	constructor(private readonly ctx: CompileContext) {}
@@ -47,16 +47,7 @@ export class ClassCompiler {
 		const cls = this.ctx.currClass!;
 
 		// find the constructor func from the registry
-		let func: FuncIR | null = null;
-		for (const [, ns] of this.ctx.registry) {
-			for (const [, f] of ns.functions) {
-				if (f.name.endsWith(`__${cls.name}__CONSTRUCTOR`)) {
-					func = f;
-					break;
-				}
-			}
-			if (func) break;
-		}
+		const func = this.ctx.resolveConstructor(cls);
 		if (!func) throw Error(`No constructor found for ${cls.name}`);
 
 		this.ctx.beginScope();

@@ -78,4 +78,13 @@ export class CompileContext {
 		}
 		return null;
 	}
+
+	public resolveConstructor(cls: ClassIR): FuncIR | null {
+		const label = `${cls.name}__CONSTRUCTOR_IMPL`;
+		for (const [, ns] of this.registry) {
+			const f = ns.functions.get(label);
+			if (f) return f;
+		}
+		return null;
+	}
 }
