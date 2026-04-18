@@ -1,4 +1,3 @@
-import { IO } from "../../compiler/swasm";
 import { TDDNetworking } from "../shared/networking";
 
 function main() {

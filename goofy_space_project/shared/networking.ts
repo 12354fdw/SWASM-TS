@@ -6,8 +6,6 @@
 	NUM1: Time
  */
 
-import { IO } from "../../compiler/swasm";
-
 const timeDivision: number = 0.0001;
 
 export class TDDNetworking {

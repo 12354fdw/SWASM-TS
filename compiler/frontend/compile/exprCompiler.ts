@@ -130,6 +130,21 @@ export class ExprCompiler {
 		if (ts.isPropertyAccessExpression(node.expression)) {
 			const property = node.expression as ts.PropertyAccessExpression;
 
+			// IO functions
+			if (ts.isIdentifier(property.expression) && property.expression.text === "IO") {
+				const fnName = property.name.text;
+				if (fnName === "getNumber")
+					return {
+						type: "in_num",
+						channel: parseInt((node.arguments[0] as ts.NumericLiteral).text),
+					};
+				if (fnName === "getBool")
+					return {
+						type: "in_bool",
+						channel: parseInt((node.arguments[0] as ts.NumericLiteral).text),
+					};
+			}
+
 			const obj = this.compile(property.expression);
 			const methodName = property.name.getText();
 
@@ -145,11 +160,6 @@ export class ExprCompiler {
 				name: methodName,
 				clazz: cls.name,
 			};
-		}
-
-		// builtin global functions
-		if (ts.isIdentifier(node.expression)) {
-			// There are litteraly none, but JUST IN CASE
 		}
 
 		// foo()

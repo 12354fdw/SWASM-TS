@@ -26,7 +26,8 @@ $info(`Creating TS Program`);
 const TSProgram = ts.createProgram([sourceFile], {
 	target: ts.ScriptTarget.ES2025,
 	strict: true,
-	lib: ["lib.es2025.d.ts"],
+	typeRoots: ["./compiler"],
+	types: ["swasm"],
 });
 
 const diagnostics = ts.getPreEmitDiagnostics(TSProgram);

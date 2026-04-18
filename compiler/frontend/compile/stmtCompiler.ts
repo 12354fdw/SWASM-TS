@@ -21,6 +21,11 @@ export class StmtCompiler {
 			if (ts.isBinaryExpression(expr) && expr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
 				return this.compileStmt_ASSIGNMENT(expr);
 			}
+
+			if (ts.isCallExpression(expr)) {
+				const intrinsic = this.compileStmt_INTRINSIC(expr);
+				if (intrinsic) return intrinsic;
+			}
 			return [
 				{
 					type: "expr",
@@ -74,5 +79,35 @@ export class StmtCompiler {
 		}
 
 		throw Error(`Unsupported assignment target: ${ts.SyntaxKind[node.left.kind]}`);
+	}
+
+	private compileStmt_INTRINSIC(node: ts.CallExpression): Stmt[] | null {
+		if (!ts.isPropertyAccessExpression(node.expression)) return null;
+		const prop = node.expression;
+		if (!ts.isIdentifier(prop.expression)) return null;
+
+		const ns = prop.expression.text;
+		const fnName = prop.name.text;
+
+		if (ns === "IO") {
+			if (fnName === "setNumber")
+				return [
+					{
+						type: "out_num",
+						channel: parseInt((node.arguments[0] as ts.NumericLiteral).text),
+						expr: this.ctx.exprCompiler.compile(node.arguments[1]),
+					},
+				];
+			if (fnName === "setBool")
+				return [
+					{
+						type: "out_bool",
+						channel: parseInt((node.arguments[0] as ts.NumericLiteral).text),
+						expr: this.ctx.exprCompiler.compile(node.arguments[1]),
+					},
+				];
+		}
+
+		return null;
 	}
 }

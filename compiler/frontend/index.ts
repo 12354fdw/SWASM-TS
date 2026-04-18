@@ -5,7 +5,7 @@ import path from "path";
 import { Assembler } from "../assembler";
 import { CompileContext } from "./compile/compileContext";
 import { registerPhase } from "./registerphase";
-import { bindPhase } from "./binder";
+import { bindPhase } from "./bindPhase";
 import { $info } from "../logger";
 import { ClassCompiler } from "./compile/classCompiler";
 import { ExprCompiler } from "./compile/exprCompiler";
@@ -22,26 +22,15 @@ export class Codegen {
 
 	public compile(): string {
 		const sources = this.program.getSourceFiles().filter((f) => !f.isDeclarationFile);
+
+		// register
+		const register = new registerPhase(this.irBuilder);
 		for (const src of sources) {
-			this.compileSourceFile(src);
+			$info(`Registering ${src.fileName}`);
+			register.register(src.statements);
 		}
 
-		const asm = this.irBuilder.lower();
-
-		const asmFile = path.resolve("./pgrm.swasm");
-		fs.writeFileSync(asmFile, asm);
-
-		const assembler = new Assembler();
-
-		return assembler.assemble(asm).join(",");
-	}
-
-	private compileSourceFile(src: ts.SourceFile) {
-		$info(`Compiling ${src.fileName}`);
-
-		const register = new registerPhase(this.irBuilder);
-		register.register(src.statements);
-
+		// bind
 		const bind = new bindPhase(register.namespaceRegistry);
 		bind.bind();
 
@@ -51,6 +40,21 @@ export class Codegen {
 		this.ctx.funcCompiler = new FunctionCompiler(this.ctx);
 		this.ctx.classCompiler = new ClassCompiler(this.ctx);
 		this.ctx.moduleCompiler = new ModuleCompiler(this.ctx);
+
+		// compile
+		for (const src of sources) {
+			this.compileSourceFile(src);
+		}
+
+		const asm = this.irBuilder.lower();
+		const asmFile = path.resolve("./pgrm.swasm");
+		fs.writeFileSync(asmFile, asm);
+
+		return new Assembler().assemble(asm).join(",");
+	}
+
+	private compileSourceFile(src: ts.SourceFile) {
+		$info(`Compiling ${src.fileName}`);
 
 		for (const stmt of src.statements) {
 			if (ts.isFunctionDeclaration(stmt)) this.ctx.funcCompiler.compile(stmt);
@@ -63,7 +67,15 @@ export class Codegen {
 
 	private compileToplevel(statements: ts.NodeArray<ts.Statement>) {
 		const topLevel = [...statements].filter(
-			(stmt) => !ts.isFunctionDeclaration(stmt) && !ts.isClassDeclaration(stmt) && !ts.isModuleDeclaration(stmt),
+			(stmt) =>
+				!ts.isFunctionDeclaration(stmt) &&
+				!ts.isClassDeclaration(stmt) &&
+				!ts.isModuleDeclaration(stmt) &&
+				!ts.isImportDeclaration(stmt) &&
+				!ts.isExportDeclaration(stmt) &&
+				!ts.isTypeAliasDeclaration(stmt) &&
+				!ts.isInterfaceDeclaration(stmt) &&
+				!ts.isExportAssignment(stmt),
 		);
 
 		if (topLevel.length === 0) return;
