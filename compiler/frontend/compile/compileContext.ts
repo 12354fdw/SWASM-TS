@@ -8,9 +8,6 @@ import { ClassCompiler } from "./classCompiler";
 import { ModuleCompiler } from "./moduleCompiler";
 
 export class CompileContext {
-	exitScope() {
-		throw new Error("Method not implemented.");
-	}
 	public localScopes: Set<string>[] = [new Set()];
 
 	public currFunc: FuncIR | null = null;
