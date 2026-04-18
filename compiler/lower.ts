@@ -1,4 +1,5 @@
 import { Emitter } from "./emitter";
+import { MAIN_LABEL } from "./frontend";
 import { ClassIR, Expr, FuncIR, Stmt, SWTypes } from "./ir";
 import { Op } from "./opcode";
 
@@ -27,7 +28,7 @@ export class Lowerer {
 	public lower(classes: ClassIR[], functions: FuncIR[]): string {
 		// CALL __main
 		this.emitter.emitComment("CALL to topLevel code (__main)");
-		this.emitter.emitWithOperand(Op.CALL, "__main");
+		this.emitter.emitWithOperand(Op.CALL, MAIN_LABEL);
 		this.emitter.emit(Op.UNREACHABLE);
 
 		for (const fn of functions) {
@@ -47,8 +48,7 @@ export class Lowerer {
 
 	private lowerClass(cls: ClassIR) {
 		// creates the constructor
-		const ctorLabel = cls.name + "_ctor";
-		this.emitter.emitLabel(ctorLabel);
+		this.emitter.emitLabel(cls.ctorLabel);
 
 		const savedLocals = new Map(this.locals);
 		const savedCount = this.localCount;
@@ -95,13 +95,10 @@ export class Lowerer {
 		if (cls.constructorParams && cls.constructorParams.length > 0) {
 			this.emitter.emitComment(`call constructor body`);
 			this.emitter.emit(Op.DUP);
-
-			// push original ctor args from locals
 			for (let i = 0; i < cls.constructorParams.length; i++) {
 				this.emitter.emitWithOperand(Op.LOCAL_GET, i + 1);
 			}
-
-			this.emitter.emitWithOperand(Op.CALL, `${cls.name}__CONSTRUCTOR`);
+			this.emitter.emitWithOperand(Op.CALL, `${cls.name}__CONSTRUCTOR_IMPL`);
 		}
 
 		this.locals = savedLocals;
@@ -406,7 +403,7 @@ export class Lowerer {
 					this.lowerExpr(arg);
 				}
 				this.emitter.emitComment(`calling constructor for ${expr.className}`);
-				this.emitter.emitWithOperand(Op.CALL, expr.className + "_ctor");
+				this.emitter.emitWithOperand(Op.CALL, expr.ctorLabel);
 				break;
 			}
 		}

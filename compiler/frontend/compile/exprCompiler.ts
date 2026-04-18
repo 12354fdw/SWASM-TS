@@ -1,9 +1,12 @@
 import ts from "typescript";
 import { Expr } from "../../ir";
 import { CompileContext } from "./compileContext";
+import { getClassIR, resolveFunction } from "../utils";
 
 export class ExprCompiler {
-	constructor(private readonly ctx: CompileContext) {}
+	constructor(private ctx: CompileContext) {
+		ctx.exprCompiler = this;
+	}
 
 	public compile(node: ts.Expression): Expr {
 		// number literals
@@ -19,6 +22,23 @@ export class ExprCompiler {
 			return { type: "boolean", value: false };
 		}
 
+		// variables
+		if (ts.isIdentifier(node)) {
+			if (this.ctx.isLocal(node.text)) {
+				return { type: "local", name: node.text };
+			}
+
+			const idx = this.ctx.getCurrentNS().globals.get(node.text)?.idx;
+			if (!idx) throw Error(`Unknown global '${this.ctx.getCurrentNS().name}.${node.text}'`);
+			return {
+				type: "global",
+				ref: {
+					name: node.text,
+					idx: idx,
+				},
+			};
+		}
+
 		// just unwrap it lol
 		if (ts.isParenthesizedExpression(node)) {
 			return this.compile(node.expression);
@@ -32,6 +52,33 @@ export class ExprCompiler {
 		// prefixunary
 		if (ts.isPrefixUnaryExpression(node)) {
 			return this.compileExpr_PREFIXUNARY(node);
+		}
+
+		// calls
+		if (ts.isCallExpression(node)) {
+			return this.compileExpr_CALL(node);
+		}
+
+		// property access (obj.xyz)
+		if (ts.isPropertyAccessExpression(node)) {
+			return this.compileExpr_PROPERTYACCESS(node);
+		}
+
+		// this
+		if (node.kind === ts.SyntaxKind.ThisKeyword) return { type: "local", name: "this" };
+
+		// new
+		if (ts.isNewExpression(node)) {
+			const className = (node.expression as ts.Identifier).text;
+			const cls = this.ctx.resolveClass(className);
+			if (!cls) throw Error(`Unknown class: ${className}`);
+
+			return {
+				type: "new",
+				className,
+				ctorLabel: cls.ctorLabel,
+				args: (node.arguments ?? []).map((a) => this.compile(a)),
+			};
 		}
 
 		throw Error(`Unsupported Expression: '${ts.SyntaxKind[node.kind].toString()}'`);
@@ -75,6 +122,68 @@ export class ExprCompiler {
 				case ts.SyntaxKind.TildeToken: return { type: "unary", op: "bnot", expr };								// ~
 				default: throw Error(`Unsupported binary expression: '${ts.SyntaxKind[node.operator].toString()}'!`);
 			}
-			/* eslint-enable prettier/prettier */
+		/* eslint-enable prettier/prettier */
+	}
+
+	private compileExpr_CALL(node: ts.CallExpression): Expr {
+		// obj.method()
+		if (ts.isPropertyAccessExpression(node.expression)) {
+			const property = node.expression as ts.PropertyAccessExpression;
+
+			const obj = this.compile(property.expression);
+			const methodName = property.name.getText();
+
+			const cls = getClassIR(property, this.ctx);
+			const method = cls.methods.get(methodName)!;
+			const methodIdx = method.idx;
+
+			return {
+				type: "method_call",
+				obj,
+				methodIdx,
+				args: node.arguments.map((a) => this.compile(a)),
+				name: methodName,
+				clazz: cls.name,
+			};
+		}
+
+		// builtin global functions
+		if (ts.isIdentifier(node.expression)) {
+			// There are litteraly none, but JUST IN CASE
+		}
+
+		// foo()
+		if (ts.isIdentifier(node.expression)) {
+			const fnName = node.expression.text;
+
+			const func = resolveFunction(fnName, this.ctx);
+			if (!func) throw Error(`Unknown function ${fnName}`);
+
+			return {
+				type: "call",
+				func,
+				args: node.arguments.map((a) => this.compile(a)),
+			};
+		}
+
+		throw Error(`Unsupported call expression: '${ts.SyntaxKind[node.expression.kind].toString()}'!`);
+	}
+
+	private compileExpr_PROPERTYACCESS(node: ts.PropertyAccessExpression): Expr {
+		const obj = this.compile(node.expression);
+		const fieldName = node.name.text;
+		const cls = getClassIR(node, this.ctx);
+
+		const field = cls.fields.get(fieldName);
+		if (field) {
+			return { type: "field", obj, fieldIdx: field.idx, name: fieldName };
+		}
+
+		const method = cls.methods.get(fieldName);
+		if (method) {
+			return { type: "field", obj, fieldIdx: method.idx, name: fieldName };
+		}
+
+		throw Error(`Unknown field/method '${fieldName}' on class '${cls.name}'`);
 	}
 }

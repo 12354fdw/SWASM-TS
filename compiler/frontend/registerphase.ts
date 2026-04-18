@@ -1,10 +1,11 @@
-import { ClassIR, FuncIR, GlobalIR } from "../ir";
+import { ClassIR, FuncIR, GlobalIR, IRBuilder } from "../ir";
 import ts, { NodeArray } from "typescript";
 import { resolveNodeType } from "./utils";
 
 export type NamespaceRegistry = Map<
 	string,
 	{
+		name: string;
 		functions: Map<string, FuncIR>;
 		classes: Map<string, ClassIR>;
 		globals: Map<string, GlobalIR>;
@@ -16,7 +17,7 @@ export class registerPhase {
 
 	private namespaceStack: string[] = [];
 
-	private topLevel: ts.Statement[] = [];
+	constructor(private readonly irBuilder: IRBuilder) { }
 
 	public register(statements: NodeArray<ts.Statement>) {
 		this.registerStatements(statements);
@@ -26,11 +27,10 @@ export class registerPhase {
 		statements.forEach((stmt: ts.Statement) => {
 			/* eslint-disable prettier/prettier */
 			if (ts.isFunctionDeclaration(stmt)) { this.registerFunction(stmt); return; }
-			if (ts.isClassDeclaration(stmt)) { this.registerClass(stmt); return;  }
+			if (ts.isVariableStatement(stmt)) { this.registerGlobals(stmt); return; }
+			if (ts.isClassDeclaration(stmt)) { this.registerClass(stmt); return; }
 			if (ts.isModuleDeclaration(stmt)) { this.registerModule(stmt); return; }
 			/* eslint-enable prettier/prettier */
-
-			this.topLevel.push(stmt);
 		});
 	}
 
@@ -48,6 +48,21 @@ export class registerPhase {
 		};
 
 		this.getNamespaceWrapper().functions.set(name, func);
+		this.irBuilder.addFunction(func);
+	}
+
+	private registerGlobals(node: ts.VariableStatement) {
+		for (const decl of node.declarationList.declarations) {
+			const name = (decl.name as ts.Identifier).text;
+
+			const global: GlobalIR = {
+				name,
+				idx: 0, // assigned in bind phase
+			};
+
+			this.getNamespaceWrapper().globals.set(name, global);
+			this.irBuilder.addGlobal(global);
+		}
 	}
 
 	private registerClass(node: ts.ClassDeclaration) {
@@ -60,6 +75,7 @@ export class registerPhase {
 			methods: new Map(),
 			parent: this.getParentName(node), // to be assigned in binding phase
 			constructorParams: ctor ? ctor.parameters.map((p) => (p.name as ts.Identifier).text) : [],
+			ctorLabel: `${name}__ctor`,
 		};
 
 		let fieldCounter = 1;
@@ -67,12 +83,12 @@ export class registerPhase {
 			if (ts.isPropertyDeclaration(member) && member.name) {
 				const fname = (member.name as ts.Identifier).text;
 				const ftype = resolveNodeType(member.type);
-				cls.fields.set(fname, { idx: fieldCounter++, type: ftype, name: member.name.getText() }); // idx is resolved in lowering phase
+				cls.fields.set(fname, { idx: fieldCounter++, type: ftype, name: member.name.getText() });
 			}
 
 			if (ts.isMethodDeclaration(member) && member.name) {
 				const mname = (member.name as ts.Identifier).text;
-				const mangled = `NS__${this.getCurrentNamespaceKey()}__${name}__${mname}`;
+				const mangled = `${name}__${mname}`;
 				const func: FuncIR = {
 					name: mangled,
 					label: mangled,
@@ -83,17 +99,36 @@ export class registerPhase {
 				};
 				this.getNamespaceWrapper().functions.set(mangled, func);
 
-				cls.methods.set(mname, { name: member.name.getText(), idx: fieldCounter++, func, methodName: name }); // idx is resolved in lowering phase
+				cls.methods.set(mname, { name: member.name.getText(), idx: fieldCounter++, func, methodName: name });
+				this.irBuilder.addFunction(func);
+			}
+		}
+
+		if (ctor) {
+			for (const param of ctor.parameters) {
+				const isParamProp = param.modifiers?.some(
+					(m) =>
+						m.kind === ts.SyntaxKind.PrivateKeyword ||
+						m.kind === ts.SyntaxKind.PublicKeyword ||
+						m.kind === ts.SyntaxKind.ProtectedKeyword ||
+						m.kind === ts.SyntaxKind.ReadonlyKeyword,
+				);
+				if (isParamProp) {
+					const fname = (param.name as ts.Identifier).text;
+					const ftype = resolveNodeType(param.type);
+					cls.fields.set(fname, { idx: fieldCounter++, type: ftype, name: fname });
+				}
 			}
 		}
 
 		if (ctor) this.registerConstructor(ctor, cls);
 
 		this.getNamespaceWrapper().classes.set(name, cls);
+		this.irBuilder.addClass(cls);
 	}
 
 	private registerConstructor(member: ts.ConstructorDeclaration, cls: ClassIR) {
-		const mangled = `NS__${this.getCurrentNamespaceKey()}__${cls.name}__CONSTRUCTOR`;
+		const mangled = `${cls.name}__CONSTRUCTOR_IMPL`;
 
 		const func: FuncIR = {
 			name: mangled,
@@ -105,6 +140,7 @@ export class registerPhase {
 		};
 
 		this.getNamespaceWrapper().functions.set(mangled, func);
+		this.irBuilder.addFunction(func);
 	}
 
 	private registerModule(node: ts.ModuleDeclaration) {
@@ -114,6 +150,7 @@ export class registerPhase {
 		if (!ts.isModuleBlock(body)) return; // how is it not a moduleBlock?????
 
 		this.namespaceStack.push(node.name.text);
+		this.getNamespaceWrapper().name = this.getCurrentNamespaceKey();
 		this.registerStatements(body.statements);
 		this.namespaceStack.pop();
 	}
@@ -131,6 +168,7 @@ export class registerPhase {
 				functions: new Map(),
 				classes: new Map(),
 				globals: new Map(),
+				name: "",
 			};
 			this.namespaceRegistry.set(key, ns);
 		}

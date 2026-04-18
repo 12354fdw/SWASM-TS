@@ -43,7 +43,7 @@ export type Expr =
 	| { type: "field"; obj: Expr; name: string; fieldIdx: number }
 	| { type: "in_num"; channel: number }
 	| { type: "in_bool"; channel: number }
-	| { type: "new"; className: string; args: Expr[] }
+	| { type: "new"; className: string; ctorLabel: string; args: Expr[] }
 	| { type: "method_call"; obj: Expr; clazz: string; name: string; methodIdx: number; args: Expr[] };
 
 export type Stmt =
@@ -76,13 +76,12 @@ export type ClassIR = {
 	methods: Map<string, { name: string; func: FuncIR; idx: number; methodName: string }>;
 	parent?: string;
 	constructorParams: string[];
+	ctorLabel: string;
 };
 
 export type GlobalIR = {
 	name: string;
 	idx: number; // decided in bind phase
-	type: SWTypes;
-	initializer?: Expr;
 };
 
 export class IRBuilder {
@@ -96,6 +95,10 @@ export class IRBuilder {
 
 	public addClass(clazz: ClassIR) {
 		this.classes.push(clazz);
+	}
+
+	public addGlobal(global: GlobalIR) {
+		this.globals.push(global);
 	}
 
 	public lower(): string {

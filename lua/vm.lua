@@ -2,7 +2,7 @@
 -- STORMWORKS COMPAT LAYER
 -- =========================
 
-local file = io.open("../a.out", "r")
+local file = io.open("./a.out", "r")
 local content = file:read("*a")
 file:close()
 
