@@ -16,8 +16,6 @@ export class registerPhase {
 
 	private namespaceStack: string[] = [];
 
-	private topLevel: ts.Statement[] = [];
-
 	public register(statements: NodeArray<ts.Statement>) {
 		this.registerStatements(statements);
 	}
@@ -29,8 +27,6 @@ export class registerPhase {
 			if (ts.isClassDeclaration(stmt)) { this.registerClass(stmt); return;  }
 			if (ts.isModuleDeclaration(stmt)) { this.registerModule(stmt); return; }
 			/* eslint-enable prettier/prettier */
-
-			this.topLevel.push(stmt);
 		});
 	}
 
