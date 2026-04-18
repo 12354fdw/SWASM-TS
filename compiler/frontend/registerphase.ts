@@ -1,0 +1,147 @@
+import { ClassIR, FuncIR, GlobalIR } from "../ir";
+import ts, { NodeArray } from "typescript";
+import { resolveNodeType } from "./utils";
+
+export type NamespaceRegistry = Map<
+	string,
+	{
+		functions: Map<string, FuncIR>;
+		classes: Map<string, ClassIR>;
+		globals: Map<string, GlobalIR>;
+	}
+>;
+
+export class registerPhase {
+	public namespaceRegistry: NamespaceRegistry = new Map();
+
+	private namespaceStack: string[] = [];
+
+	private topLevel: ts.Statement[] = [];
+
+	public register(statements: NodeArray<ts.Statement>) {
+		this.registerStatements(statements);
+	}
+
+	private registerStatements(statements: NodeArray<ts.Statement>) {
+		statements.forEach((stmt: ts.Statement) => {
+			/* eslint-disable prettier/prettier */
+			if (ts.isFunctionDeclaration(stmt)) { this.registerFunction(stmt); return; }
+			if (ts.isClassDeclaration(stmt)) { this.registerClass(stmt); return;  }
+			if (ts.isModuleDeclaration(stmt)) { this.registerModule(stmt); return; }
+			/* eslint-enable prettier/prettier */
+
+			this.topLevel.push(stmt);
+		});
+	}
+
+	private registerFunction(node: ts.FunctionDeclaration) {
+		const name = `NS__${this.getCurrentNamespaceKey()}__${node.name!.text}`;
+		const params = node.parameters.map((p) => (p.name as ts.Identifier).text);
+
+		const func: FuncIR = {
+			name,
+			label: name,
+			params,
+			returns: [],
+			body: [],
+			returnedType: false,
+		};
+
+		this.getNamespaceWrapper().functions.set(name, func);
+	}
+
+	private registerClass(node: ts.ClassDeclaration) {
+		const name = `NS__${this.getCurrentNamespaceKey()}__${node.name!.text}`;
+		const ctor = node.members.find(ts.isConstructorDeclaration);
+
+		const cls: ClassIR = {
+			name,
+			fields: new Map(),
+			methods: new Map(),
+			parent: this.getParentName(node), // to be assigned in binding phase
+			constructorParams: ctor ? ctor.parameters.map((p) => (p.name as ts.Identifier).text) : [],
+		};
+
+		let fieldCounter = 1;
+		for (const member of node.members) {
+			if (ts.isPropertyDeclaration(member) && member.name) {
+				const fname = (member.name as ts.Identifier).text;
+				const ftype = resolveNodeType(member.type);
+				cls.fields.set(fname, { idx: fieldCounter++, type: ftype, name: member.name.getText() }); // idx is resolved in lowering phase
+			}
+
+			if (ts.isMethodDeclaration(member) && member.name) {
+				const mname = (member.name as ts.Identifier).text;
+				const mangled = `NS__${this.getCurrentNamespaceKey()}__${name}__${mname}`;
+				const func: FuncIR = {
+					name: mangled,
+					label: mangled,
+					params: ["this", ...member.parameters.map((p) => (p.name as ts.Identifier).text)],
+					returns: [],
+					body: [],
+					returnedType: false, // used interally in lowering
+				};
+				this.getNamespaceWrapper().functions.set(mangled, func);
+
+				cls.methods.set(mname, { name: member.name.getText(), idx: fieldCounter++, func, methodName: name }); // idx is resolved in lowering phase
+			}
+		}
+
+		if (ctor) this.registerConstructor(ctor, cls);
+
+		this.getNamespaceWrapper().classes.set(name, cls);
+	}
+
+	private registerConstructor(member: ts.ConstructorDeclaration, cls: ClassIR) {
+		const mangled = `NS__${this.getCurrentNamespaceKey()}__${cls.name}__CONSTRUCTOR`;
+
+		const func: FuncIR = {
+			name: mangled,
+			label: mangled,
+			params: ["this", ...member.parameters.map((p) => (p.name as ts.Identifier).text)],
+			returns: [],
+			body: [],
+			returnedType: false,
+		};
+
+		this.getNamespaceWrapper().functions.set(mangled, func);
+	}
+
+	private registerModule(node: ts.ModuleDeclaration) {
+		const body = node.body;
+
+		if (!body) return; // this is a cruel joke
+		if (!ts.isModuleBlock(body)) return; // how is it not a moduleBlock?????
+
+		this.namespaceStack.push(node.name.text);
+		this.registerStatements(body.statements);
+		this.namespaceStack.pop();
+	}
+
+	private getCurrentNamespaceKey(): string {
+		return this.namespaceStack.join("__") || "GLOBAL";
+	}
+
+	private getNamespaceWrapper() {
+		const key = this.getCurrentNamespaceKey();
+
+		let ns = this.namespaceRegistry.get(key);
+		if (!ns) {
+			ns = {
+				functions: new Map(),
+				classes: new Map(),
+				globals: new Map(),
+			};
+			this.namespaceRegistry.set(key, ns);
+		}
+
+		return ns;
+	}
+
+	// class helper
+	private getParentName(node: ts.ClassDeclaration): string | undefined {
+		const clause = node.heritageClauses?.find((h) => h.token === ts.SyntaxKind.ExtendsKeyword);
+		if (!clause) return undefined;
+		return (clause.types[0].expression as ts.Identifier).text;
+	}
+}

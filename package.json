@@ -1,0 +1,30 @@
+{
+  "name": "swasm-ts",
+  "version": "0.1.0",
+  "description": "TypeScript to SWASM bytecode compiler",
+  "main": "dist/index.js",
+  "bin": {
+    "swasm": "dist/index.js"
+  },
+  "scripts": {
+    "compileAI": "ts-node compiler-AI/index.ts",
+    "disassembleAI": "ts-node compiler-AI/disassembleTool.ts",
+    "compiler": "ts-node compiler/compiler.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.39",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^8.10.2",
+    "eslint-plugin-prettier": "^3.4.1",
+    "globals": "^17.5.0",
+    "jiti": "^2.6.1",
+    "prettier": "^2.8.8",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.58.2"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "undici-types": "^8.1.0"
+  }
+}

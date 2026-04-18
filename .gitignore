@@ -1,0 +1,14 @@
+dist/
+
+a.out
+*.swasm
+output
+
+*.tsbuildinfo
+
+.vscode/
+.idea/
+
+*.log
+
+node_modules/

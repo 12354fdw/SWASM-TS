@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2025",
+    "module": "commonjs",
+    "lib": ["ES2025"],
+    "types": ["node"],
+    "outDir": "dist",
+    "rootDir": ".",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": ["compiler/**/*", "goofy_space_project/**/*", "compiler-AI/lower.ts"],
+  "exclude": ["node_modules", "dist"]
+}
