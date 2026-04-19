@@ -12,3 +12,5 @@ output
 *.log
 
 node_modules/
+
+buga.out
