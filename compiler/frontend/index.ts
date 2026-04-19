@@ -91,7 +91,6 @@ export class Codegen {
 			};
 			this.irBuilder.addFunction(func);
 		}
-		this.irBuilder.addFunction(func);
 
 		this.ctx.currFunc = func;
 		this.ctx.resetLocals();
