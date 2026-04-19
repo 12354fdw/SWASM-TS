@@ -1,6 +1,6 @@
 import ts from "typescript";
 import fs from "fs";
-import { FuncIR, IRBuilder } from "../ir";
+import { IRBuilder, Stmt } from "../ir";
 import path from "path";
 import { Assembler } from "../assembler";
 import { CompileContext } from "./compile/compileContext";
@@ -79,16 +79,18 @@ export class Codegen {
 		);
 
 		if (topLevel.length === 0) return;
-
-		const func: FuncIR = {
-			name: MAIN_LABEL,
-			label: MAIN_LABEL,
-			params: [],
-			returns: [],
-			body: [],
-			returnedType: false,
-		};
-
+		let func = this.irBuilder.functions.find((f) => f.label === MAIN_LABEL);
+		if (!func) {
+			func = {
+				name: MAIN_LABEL,
+				label: MAIN_LABEL,
+				params: [],
+				returns: [],
+				body: [],
+				returnedType: false,
+			};
+			this.irBuilder.addFunction(func);
+		}
 		this.irBuilder.addFunction(func);
 
 		this.ctx.currFunc = func;
@@ -96,10 +98,30 @@ export class Codegen {
 		this.ctx.beginScope();
 
 		for (const stmt of topLevel) {
+			if (ts.isVariableStatement(stmt)) {
+				func.body.push(this.handleToplevelVariable(stmt));
+				continue;
+			}
 			func.body.push(...this.ctx.stmtCompiler.compile(stmt));
 		}
 
 		this.ctx.endScope();
 		this.ctx.currFunc = null;
+	}
+
+	private handleToplevelVariable(stmt: ts.VariableStatement): Stmt {
+		for (const decl of stmt.declarationList.declarations) {
+			const name = (decl.name as ts.Identifier).text;
+			const global = this.ctx.getCurrentNS().globals.get(name);
+			if (global && decl.initializer) {
+				return {
+					type: "global_assign",
+					ref: global,
+					value: this.ctx.exprCompiler.compile(decl.initializer),
+				};
+			}
+			throw Error(`Toplevel variable '${name}' doesn't have an initializer!`);
+		}
+		throw Error(`Variable statement has no declarations`);
 	}
 }

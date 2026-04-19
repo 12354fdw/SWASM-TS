@@ -373,20 +373,19 @@ export class Lowerer {
 			}
 
 			case "method_call": {
-				this.lowerExpr(expr.obj); // push table
-
-				this.emitter.emitComment(`get output of method ${expr.clazz}.${expr.name}`);
-
-				this.emitter.emitWithOperand(Op.TABLE_GET, expr.methodIdx); // get function pointer
+				// get function pointer
+				this.lowerExpr(expr.obj);
+				this.emitter.emitWithOperand(Op.TABLE_GET, expr.methodIdx);
 				const tmp = this.allocLocal("__tmp_fnptr");
 				this.emitter.emitWithOperand(Op.LOCAL_SET, tmp);
-				for (const arg of expr.args) this.lowerExpr(arg); // push args
 
-				this.lowerExpr(expr.obj); // this
+				// push self FIRST
+				this.lowerExpr(expr.obj);
+				// push args in order
+				for (const arg of expr.args) this.lowerExpr(arg);
+
 				this.emitter.emitWithOperand(Op.LOCAL_GET, tmp);
 				this.emitter.emit(Op.CALL_DYN);
-
-				this.emitter.emitBreak();
 				break;
 			}
 
