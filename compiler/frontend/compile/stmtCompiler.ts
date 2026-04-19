@@ -45,6 +45,39 @@ export class StmtCompiler {
 			];
 		}
 
+		// block statement
+		if (ts.isBlock(node)) {
+			this.ctx.beginScope();
+			const stmts = [...node.statements].flatMap((s) => this.compile(s));
+			this.ctx.endScope();
+			return stmts;
+		}
+
+		// if statements
+		if (ts.isIfStatement(node)) {
+			return this.compileStmt_IF(node);
+		}
+
+		// while statements
+		if (ts.isWhileStatement(node)) {
+			return this.compileStmt_WHILE(node);
+		}
+
+		// for statements
+		if (ts.isForStatement(node)) {
+			return this.compileStmt_FOR(node);
+		}
+
+		// for of
+		if (ts.isForOfStatement(node)) {
+			throw Error("for of not supported yet!");
+		}
+
+		// for in
+		if (ts.isForInStatement(node)) {
+			throw Error("for in not supported yet!");
+		}
+
 		throw Error(`Unsupported Statement: '${ts.SyntaxKind[node.kind]}'`);
 	}
 
@@ -109,5 +142,75 @@ export class StmtCompiler {
 		}
 
 		return null;
+	}
+
+	private compileStmt_IF(node: ts.IfStatement): Stmt[] {
+		const thenStmts = this.compileStatementOrBlock(node.thenStatement);
+
+		const elseStmt = node.elseStatement ? this.compileStatementOrBlock(node.elseStatement) : undefined;
+
+		return [
+			{
+				type: "if",
+				cond: this.ctx.exprCompiler.compile(node.expression),
+				then: thenStmts,
+				else: elseStmt,
+			},
+		];
+	}
+
+	private compileStmt_WHILE(node: ts.WhileStatement): Stmt[] {
+		const body = this.compileStatementOrBlock(node.statement);
+
+		return [
+			{
+				type: "while",
+				cond: this.ctx.exprCompiler.compile(node.expression),
+				body,
+			},
+		];
+	}
+
+	private compileStmt_FOR(node: ts.ForStatement): Stmt[] {
+		// convert it into while
+		const stmts: Stmt[] = [];
+
+		// initializer
+		if (node.initializer && ts.isVariableDeclarationList(node.initializer)) {
+			for (const decl of node.initializer.declarations) {
+				const name = (decl.name as ts.Identifier).text;
+				this.ctx.declareLocal(name);
+				stmts.push({
+					type: "let",
+					name,
+					value: decl.initializer
+						? this.ctx.exprCompiler.compile(decl.initializer)
+						: { type: "number", value: 0 },
+				});
+			}
+		}
+
+		// body + incrementor
+		const body = this.compileStatementOrBlock(node.statement);
+
+		if (node.incrementor) {
+			body.push({ type: "expr", expr: this.ctx.exprCompiler.compile(node.incrementor) });
+		}
+
+		stmts.push({
+			type: "while",
+			cond: node.condition ? this.ctx.exprCompiler.compile(node.condition) : { type: "boolean", value: true },
+			body,
+		});
+
+		return stmts;
+	}
+
+	// helpers
+	private compileStatementOrBlock(stmt: ts.Statement): Stmt[] {
+		if (ts.isBlock(stmt)) {
+			return stmt.statements.flatMap((s) => this.compile(s));
+		}
+		return this.compile(stmt);
 	}
 }
