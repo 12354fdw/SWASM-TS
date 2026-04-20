@@ -81,6 +81,18 @@ export class ExprCompiler {
 			};
 		}
 
+		// array
+		if (ts.isArrayLiteralExpression(node)) {
+			const init = node.elements.map((v) => {
+				return this.compile(v);
+			});
+
+			return {
+				type: "new_array",
+				init,
+			};
+		}
+
 		throw Error(`Unsupported Expression: '${ts.SyntaxKind[node.kind].toString()}'`);
 	}
 

@@ -44,7 +44,8 @@ export type Expr =
 	| { type: "in_num"; channel: number }
 	| { type: "in_bool"; channel: number }
 	| { type: "new"; className: string; ctorLabel: string; args: Expr[] }
-	| { type: "method_call"; obj: Expr; clazz: string; name: string; methodIdx: number; args: Expr[] };
+	| { type: "method_call"; obj: Expr; clazz: string; name: string; methodIdx: number; args: Expr[] }
+	| { type: "new_array"; init: Expr[] };
 
 export type Stmt =
 	| { type: "let"; name: string; value: Expr }

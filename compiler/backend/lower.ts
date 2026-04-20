@@ -405,6 +405,22 @@ export class Lowerer {
 				this.emitter.emitWithOperand(Op.CALL, expr.ctorLabel);
 				break;
 			}
+
+			case "new_array": {
+				this.emitter.emitComment("new array");
+
+				this.emitter.emit(Op.TABLE_NEW);
+
+				for (const el of expr.init) {
+					this.emitter.emit(Op.DUP);
+					this.lowerExpr(el);
+					this.emitter.emit(Op.TABLE_INSERT);
+				}
+
+				this.emitter.emitBreak();
+
+				break;
+			}
 		}
 	}
 
