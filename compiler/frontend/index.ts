@@ -2,7 +2,7 @@ import ts from "typescript";
 import fs from "fs";
 import { IRBuilder, Stmt } from "../ir";
 import path from "path";
-import { Assembler } from "../assembler";
+import { Assembler } from "../backend/assembler";
 import { CompileContext } from "./compile/compileContext";
 import { registerPhase } from "./registerphase";
 import { bindPhase } from "./bindPhase";
@@ -12,15 +12,29 @@ import { ExprCompiler } from "./compile/exprCompiler";
 import { FunctionCompiler } from "./compile/functionCompiler";
 import { ModuleCompiler } from "./compile/moduleCompiler";
 import { StmtCompiler } from "./compile/stmtCompiler";
+import { generateROM, generateVM } from "../templateFactory";
 
 export const MAIN_LABEL = "__TOPLEVELCODE__";
+
+const outputDir = "./output";
+
+const ROM_STRING_SIZE = 8000; // doing it safe and 8KB not 8KiB
+const ROM_TEMPLATE_OVERHEAD = `iN,iB,oN,oB=input.getNumber,input.getBool,output.setNumber,output.setBool
+ID=99
+data={}
+function onTick()
+local sel=iN(31)
+if sel~=ID then return end
+local idx=iN(32)
+oN(1,data[idx]or 0)
+end`.length;
 
 export class Codegen {
 	private irBuilder = new IRBuilder();
 	private ctx!: CompileContext;
 	constructor(private readonly program: ts.Program) {}
 
-	public compile(): string {
+	public compile() {
 		const sources = this.program.getSourceFiles().filter((f) => !f.isDeclarationFile);
 
 		// register
@@ -46,11 +60,28 @@ export class Codegen {
 			this.compileSourceFile(src);
 		}
 
+		// initalize output
+		if (fs.existsSync(outputDir)) {
+			fs.rmSync(outputDir, { recursive: true, force: false });
+		}
+		fs.mkdirSync(outputDir, { recursive: true });
+
 		const asm = this.irBuilder.lower();
-		const asmFile = path.resolve("./pgrm.swasm");
+		const asmFile = path.resolve(`${outputDir}/pgrm.swasm`);
 		fs.writeFileSync(asmFile, asm);
 
-		return new Assembler().assemble(asm).join(",");
+		const bytecode = new Assembler().assemble(asm);
+		const chunks = this.chunkBytecode(bytecode);
+
+		chunks.forEach((chunk, i) => {
+			const rom = generateROM(i + 1, chunk);
+			fs.writeFileSync(path.resolve(`${outputDir}/ROM${i + 1}.lua`), rom);
+		});
+
+		const vm = generateVM(chunks.map((c) => c.length));
+		fs.writeFileSync(path.resolve(`${outputDir}/VM.lua`), vm);
+
+		$info(`Produced ${bytecode.length} floats spread across ${chunks.length} ROM(s)`);
 	}
 
 	private compileSourceFile(src: ts.SourceFile) {
@@ -63,6 +94,29 @@ export class Codegen {
 		}
 
 		this.compileToplevel(src.statements);
+	}
+
+	private chunkBytecode(bytecode: number[]): number[][] {
+		const chunks: number[][] = [];
+		let current: number[] = [];
+		let currentSize = ROM_TEMPLATE_OVERHEAD;
+
+		for (const val of bytecode) {
+			const valStr = val.toString();
+			const cost = valStr.length + 1;
+
+			if (currentSize + cost > ROM_STRING_SIZE) {
+				chunks.push(current);
+				current = [];
+				currentSize = ROM_TEMPLATE_OVERHEAD;
+			}
+
+			current.push(val);
+			currentSize += cost;
+		}
+
+		if (current.length > 0) chunks.push(current);
+		return chunks;
 	}
 
 	private compileToplevel(statements: ts.NodeArray<ts.Statement>) {

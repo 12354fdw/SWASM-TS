@@ -1,7 +1,7 @@
 import { Emitter } from "./emitter";
-import { MAIN_LABEL } from "./frontend";
-import { ClassIR, Expr, FuncIR, Stmt, SWTypes } from "./ir";
-import { Op } from "./opcode";
+import { MAIN_LABEL } from "../frontend";
+import { ClassIR, Expr, FuncIR, Stmt, SWTypes } from "../ir";
+import { Op } from "../opcode";
 
 /*
 	Functions/Methods ABI:

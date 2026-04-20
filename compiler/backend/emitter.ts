@@ -1,4 +1,4 @@
-import { HAS_OPERAND, Op } from "./opcode";
+import { HAS_OPERAND, Op } from "../opcode";
 
 const OpName = Object.fromEntries(Object.entries(Op).map(([k, v]) => [v, k])) as Record<number, string>;
 

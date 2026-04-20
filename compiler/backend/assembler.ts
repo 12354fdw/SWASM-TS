@@ -1,4 +1,4 @@
-import { HAS_OPERAND, Op } from "./opcode";
+import { HAS_OPERAND, Op } from "../opcode";
 
 const OpFromName = Op as unknown as Record<string, number>;
 

@@ -6,7 +6,6 @@ import * as fs from "fs";
 import * as ts from "typescript";
 import chalk from "chalk";
 import { Codegen } from "./frontend";
-import path from "path";
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -66,12 +65,8 @@ if (isThereError) {
 
 try {
 	const codegen = new Codegen(TSProgram);
-	const bytecode = codegen.compile();
+	codegen.compile();
 	$info(`BUILD SUCCESSFULL`);
-	$info(`produced a.out with ${bytecode.split(",").length} floats`);
-
-	const output = path.resolve("./a.out");
-	fs.writeFileSync(output, bytecode);
 } catch (e: unknown) {
 	const error = e as Error;
 	$error("BUILD FAILED");

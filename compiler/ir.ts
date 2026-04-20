@@ -1,4 +1,4 @@
-import { Lowerer } from "./lower";
+import { Lowerer } from "./backend/lower";
 
 export type SWTypes = "number" | "boolean" | "table";
 

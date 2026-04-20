@@ -1,205 +1,24 @@
--- =========================
--- STORMWORKS COMPAT LAYER
--- =========================
+// this might not be pretty but it works
 
-local file = io.open("./a.out", "r")
-local content = file:read("*a")
-file:close()
-
-
-local _property = {
-  CODE = content
+export function generateROM(id: number, data: number[]): string {
+	return `iN,iB,oN,oB=input.getNumber,input.getBool,output.setNumber,output.setBool
+ID=${id}
+data={${data.join(",")}}
+function onTick()
+  local sel=iN(31)
+  if sel~=ID then return end
+  
+  local idx=iN(32)
+  oN(1, data[idx] or 0)
+end`;
 }
 
-property = {}
-function property.getText(key)
-  return _property[key] or ""
-end
-
-input = {}
-function input.getNumber(channel)
-  return 0
-end
-function input.getBool(channel)
-  return false
-end
-
-output = {}
-function output.setNumber(channel, value)
-  -- no-op (or print if you want debug)
-end
-function output.setBool(channel, value)
-  -- no-op
-end
-
--- opcode -> name
-local OpName = {
-  [0] = "NOP", 
-  [1] = "UNREACHABLE",
-  [2] = "RETURN",
-  [3] = "CALL",
-  [4] = "JMP",
-  [5] = "JZ",
-  [6] = "JNZ",
-  [7] = "JT",
-  [8] = "JF",
-
-  [9] = "PUSH_N",
-  [10] = "PUSH_B",
-  [11] = "POP",
-  [12] = "DUP",
-  [13] = "SWAP",
-  [14] = "SELECT",
-
-  [15] = "LOCAL_GET",
-  [16] = "LOCAL_SET",
-  [17] = "LOCAL_TEE",
-  [18] = "GLOBAL_GET",
-  [19] = "GLOBAL_SET",
-
-  [20] = "LOAD",
-  [21] = "STORE",
-  [22] = "LOAD_DYN",
-  [23] = "STORE_DYN",
-
-  [24] = "ADD",
-  [25] = "SUB",
-  [26] = "MUL",
-  [27] = "DIV",
-  [28] = "MOD",
-  [29] = "ABS",
-  [30] = "NEG",
-  [31] = "SQRT",
-  [32] = "FLOOR",
-  [33] = "CEIL",
-  [34] = "MIN",
-  [35] = "MAX",
-
-  [36] = "EQ",
-  [37] = "NE",
-  [38] = "LT",
-  [39] = "GT",
-  [40] = "LE",
-  [41] = "GE",
-
-  [42] = "AND",
-  [43] = "OR",
-  [44] = "NOT",
-  [45] = "XOR",
-
-  [46] = "BAND",
-  [47] = "BOR",
-  [48] = "BXOR",
-  [49] = "BNOT",
-  [50] = "SHL",
-  [51] = "SHR",
-
-  [52] = "NUM_TO_BOOL",
-  [53] = "BOOL_TO_NUM",
-
-  [54] = "IN_NUM",
-  [55] = "IN_BOOL",
-  [56] = "OUT_NUM",
-  [57] = "OUT_BOOL",
-
-  [58] = "TABLE_NEW",
-  [59] = "TABLE_GET",
-  [60] = "TABLE_SET",
-  [61] = "TABLE_GET_DYN",
-  [62] = "TABLE_SET_DYN",
-  [63] = "TABLE_LEN",
-  [64] = "TABLE_INSERT",
-  [65] = "TABLE_REMOVE",
-  [66] = "CALL_DYN"
-}
-
-local OpOperand = {
-  [3] = 1,   -- CALL addr
-  [4] = 1,   -- JMP addr
-  [5] = 1,   -- JZ addr
-  [6] = 1,   -- JNZ addr
-  [7] = 1,   -- JT addr
-  [8] = 1,   -- JF addr
-
-  [9] = 1,   -- PUSH_N value
-  [10] = 1,  -- PUSH_B value
-
-  [15] = 1,  -- LOCAL_GET idx
-  [16] = 1,
-  [17] = 1,
-  [18] = 1,
-  [19] = 1,
-
-  [20] = 1,  -- LOAD addr
-  [21] = 1,
-
-  [54] = 1,  -- IN_NUM
-  [55] = 1,
-  [56] = 1,
-  [57] = 1,
-
-  [59] = 1,  -- TABLE_GET key
-  [60] = 1,
-  [65] = 1,
-}
-
-function dumpState(opcode)
-  print("================== DUMP ==================")
-
-  local name = OpName[opcode] or "???"
-  local argc = OpOperand[opcode] or 0
-
-  local operandStr = ""
-
-  if argc > 0 then
-    for i = 1, argc do
-      local v = code[pc + i]
-      if v == nil then v = "?" end
-      operandStr = operandStr .. tostring(v) .. " "
-    end
-    print("PC:", pc, "OP:", name.." "..operandStr)
-  else
-    print("PC:", pc, "OP:", name)
-  end
-
-  print("STACK:")
-  for i,v in ipairs(s) do
-    print(i, v, type(v))
-  end
-
-  print("CURRENT LOCAL FRAME:")
-  for i,v in pairs(lm[lp]) do
-      print(i, v, type(v))
-  end
-  print("LP:", lp)
-  print("LM SIZE:", #lm)
-
-  print("MEM:")
-  for k,v in ipairs(m) do
-    print(k, v, type(v))
-  end
-
-  print("CS:")
-  for i,v in ipairs(cs) do
-    print(i, v)
-  end
-
-  print("==========================================")
-end
-
--- =========================
--- VM
--- =========================
-
-
-SPEED=100
+export function generateVM(romtable: number[]) {
+	return `SPEED=100
 iN,iB,oN,oB=input.getNumber,input.getBool,output.setNumber,output.setBool
 code={}
---BOOTSTRAP
--- N1: rom select
--- N2: idx
 oN(32, 987654321)
-roms={}
+roms={${romtable.join(",")}}
 rs,ri,ci=1,1,1
 BOOT=true
 
@@ -219,20 +38,17 @@ o={
 [6]=function()local a=code[pc];pc=pc+1;if po(s)~=0 then pc=a end end,
 [7]=function()local a=code[pc];pc=pc+1;if po(s)==true then pc=a end end,
 [8]=function()local a=code[pc];pc=pc+1;local c=po(s);if c==false or c==0 then pc=a end end,
-
 [9]=function()pu(code[pc]);pc=pc+1 end,
 [10]=function()pu(code[pc]~=0);pc=pc+1 end,
 [11]=function()po(s)end,
 [12]=function()pu(s[#s])end,
 [13]=function()local a,b=po(s),po(s);pu(a);pu(b)end,
 [14]=function()local c,b,a=po(s),po(s),po(s);pu(a~=0 and b or c)end,
-
 [15]=function()local i=code[pc];pc=pc+1;pu(lm[lp][i])end,
 [16]=function()local i=code[pc];pc=pc+1;lm[lp][i]=po(s)end,
 [17]=function()local i=code[pc];pc=pc+1;local v=po(s);lm[lp][i]=v;pu(v)end,
 [18]=function()pu(m[code[pc]]);pc=pc+1 end,
 [19]=function()m[code[pc]]=po(s);pc=pc+1 end,
-
 [20]=function()local a=code[pc];pc=pc+1;pu(m[a])end,
 [21]=function()local a=code[pc];pc=pc+1;m[a]=po(s)end,
 [22]=function()local a=po(s);pu(m[a])end,
@@ -295,10 +111,5 @@ end
 for i=1,SPEED do
 	local op=code[pc] dumpState(op)oN(30,op) pc=pc+1 (o[op])()if hlt then return end
 end
-end
-
--- =========================
--- STORMWORKS COMPAT LAYER
--- =========================
-
-while true do onTick() end
+end`;
+}
