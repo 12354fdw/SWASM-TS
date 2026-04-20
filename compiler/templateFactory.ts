@@ -14,13 +14,14 @@ end`;
 }
 
 export function generateVM(romtable: number[]) {
-	return `SPEED=100
+	return `
+SPEED=100
 iN,iB,oN,oB=input.getNumber,input.getBool,output.setNumber,output.setBool
 code={}
-oN(32, 987654321)
 roms={${romtable.join(",")}}
 rs,ri,ci=1,1,1
 BOOT=true
+BOOT_WRITE_DELAY=4
 
 m,lm,lp,s,cs,pc,hlt={},{{}},1,{},{},1,false
 abs,sq,fl,ce,mi,ma=math.abs,math.sqrt,math.floor,math.ceil,math.min,math.max
@@ -100,16 +101,19 @@ o={
 
 function onTick()
 if hlt then return end
+
 if BOOT then
-	if ci>1 then code[ci-1]=iN(1) end
-	if rs>#roms then BOOT=false pc=1 return end
-	oN(31,rs)oN(32,ri)
-	ci=ci+1
-	ri=ri+1
-	if ri>roms[rs] then rs=rs+1 ri=1 end
+  local waddr=ci-BOOT_WRITE_DELAY
+  if waddr>0 then code[waddr]=iN(1)end
+  ci=ci+1
+  oN(31,rs) oN(32,ri)
+  ri=ri+1
+  if ri>roms[rs]+BOOT_WRITE_DELAY then rs=rs+1 ri=1 end
+  if roms[rs]==nil then BOOT=false pc=1 oB(32, true)end
+  return
 end
 for i=1,SPEED do
-	local op=code[pc] dumpState(op)oN(30,op) pc=pc+1 (o[op])()if hlt then return end
+	local op=code[pc]oN(31,pc)pc=pc+1 (o[op])()if hlt then return end
 end
 end`;
 }
