@@ -93,6 +93,14 @@ export class ExprCompiler {
 			};
 		}
 
+		if (ts.isElementAccessExpression(node)) {
+			return {
+				type: "read_array",
+				array: this.compile(node.expression),
+				idx: this.compile(node.argumentExpression),
+			};
+		}
+
 		throw Error(`Unsupported Expression: '${ts.SyntaxKind[node.kind].toString()}'`);
 	}
 

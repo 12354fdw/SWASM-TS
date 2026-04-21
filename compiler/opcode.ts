@@ -84,8 +84,8 @@ export const Op = {
 	TABLE_NEW: 58,
 	TABLE_GET: 59, // [TABLE_GET, key]
 	TABLE_SET: 60, // [TABLE_SET, key] -- pops table then value
-	TABLE_GET_DYN: 61, // pops key then table
-	TABLE_SET_DYN: 62, // pops key, value, table
+	TABLE_GET_DYN: 61, // STACK ABI: [table,key]
+	TABLE_SET_DYN: 62, // STACK ABI: [table,value,key]
 	TABLE_LEN: 63,
 	TABLE_INSERT: 64,
 	TABLE_REMOVE: 65, // [TABLE_REMOVE, idx]

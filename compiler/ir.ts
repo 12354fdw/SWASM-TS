@@ -45,7 +45,8 @@ export type Expr =
 	| { type: "in_bool"; channel: number }
 	| { type: "new"; className: string; ctorLabel: string; args: Expr[] }
 	| { type: "method_call"; obj: Expr; clazz: string; name: string; methodIdx: number; args: Expr[] }
-	| { type: "new_array"; init: Expr[] };
+	| { type: "new_array"; init: Expr[] }
+	| { type: "read_array"; array: Expr; idx: Expr };
 
 export type Stmt =
 	| { type: "let"; name: string; value: Expr }
@@ -57,7 +58,8 @@ export type Stmt =
 	| { type: "out_bool"; expr: Expr; channel: number }
 	| { type: "local_assign"; name: string; value: Expr }
 	| { type: "global_assign"; ref: GlobalIR; value: Expr }
-	| { type: "field_assign"; obj: Expr; fieldIdx: number; value: Expr; name: string };
+	| { type: "field_assign"; obj: Expr; fieldIdx: number; value: Expr; name: string }
+	| { type: "array_assign"; array: Expr; idx: Expr; value: Expr };
 
 export type FuncIR = {
 	name: string;

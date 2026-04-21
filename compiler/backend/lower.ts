@@ -251,6 +251,17 @@ export class Lowerer {
 				this.emitter.emitBreak();
 				break;
 			}
+
+			case "array_assign": {
+				this.lowerExpr(stmt.array);
+				this.lowerExpr(stmt.value);
+				this.lowerExpr(stmt.idx);
+
+				this.emitter.emitComment("array assign");
+				this.emitter.emit(Op.TABLE_SET_DYN);
+				this.emitter.emitBreak();
+				break;
+			}
 		}
 	}
 
@@ -419,6 +430,16 @@ export class Lowerer {
 
 				this.emitter.emitBreak();
 
+				break;
+			}
+
+			case "read_array": {
+				this.lowerExpr(expr.array);
+				this.lowerExpr(expr.idx);
+
+				this.emitter.emitComment("read array");
+				this.emitter.emit(Op.TABLE_GET_DYN);
+				this.emitter.emitBreak();
 				break;
 			}
 		}

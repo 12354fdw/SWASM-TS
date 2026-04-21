@@ -111,6 +111,18 @@ export class StmtCompiler {
 			return [{ type: "local_assign", name: node.left.text, value }];
 		}
 
+		// array[idx] = val
+		if (ts.isElementAccessExpression(node.left)) {
+			return [
+				{
+					type: "array_assign",
+					array: this.ctx.exprCompiler.compile(node.left.expression),
+					idx: this.ctx.exprCompiler.compile(node.left.argumentExpression),
+					value: this.ctx.exprCompiler.compile(node.right),
+				},
+			];
+		}
+
 		throw Error(`Unsupported assignment target: ${ts.SyntaxKind[node.left.kind]}`);
 	}
 
