@@ -150,20 +150,8 @@ export class ExprCompiler {
 		if (ts.isPropertyAccessExpression(node.expression)) {
 			const property = node.expression as ts.PropertyAccessExpression;
 
-			// IO functions
-			if (ts.isIdentifier(property.expression) && property.expression.text === "IO") {
-				const fnName = property.name.text;
-				if (fnName === "getNumber")
-					return {
-						type: "in_num",
-						channel: parseInt((node.arguments[0] as ts.NumericLiteral).text),
-					};
-				if (fnName === "getBool")
-					return {
-						type: "in_bool",
-						channel: parseInt((node.arguments[0] as ts.NumericLiteral).text),
-					};
-			}
+			const intrinsic = this.compileExpr_INSTRINSIC(node);
+			if (intrinsic) return intrinsic;
 
 			const obj = this.compile(property.expression);
 			const methodName = property.name.getText();
@@ -215,5 +203,59 @@ export class ExprCompiler {
 		}
 
 		throw Error(`Unknown field/method '${fieldName}' on class '${cls.name}'`);
+	}
+
+	private compileExpr_INSTRINSIC(node: ts.CallExpression): Expr | undefined {
+		const property = node.expression as ts.PropertyAccessExpression;
+
+		// IO functions
+		if (ts.isIdentifier(property.expression) && property.expression.text === "IO") {
+			const fnName = property.name.text;
+
+			switch (fnName) {
+				case "getNumber":
+					return {
+						type: "in_num",
+						channel: parseInt((node.arguments[0] as ts.NumericLiteral).text),
+					};
+
+				case "getBool":
+					return {
+						type: "in_bool",
+						channel: parseInt((node.arguments[0] as ts.NumericLiteral).text),
+					};
+			}
+		}
+
+		if (ts.isIdentifier(property.expression) && property.expression.text === "Math") {
+			const fnName = property.name.text;
+
+			switch (fnName) {
+				case "abs":
+					return { type: "unary", op: "abs", expr: this.compile(node.arguments[0]) };
+				case "sqrt":
+					return { type: "unary", op: "sqrt", expr: this.compile(node.arguments[0]) };
+				case "floor":
+					return { type: "unary", op: "floor", expr: this.compile(node.arguments[0]) };
+				case "ceil":
+					return { type: "unary", op: "ceil", expr: this.compile(node.arguments[0]) };
+
+				case "max":
+					return {
+						type: "binary",
+						op: "max",
+						left: this.compile(node.arguments[0]),
+						right: this.compile(node.arguments[1]),
+					};
+
+				case "min":
+					return {
+						type: "binary",
+						op: "min",
+						left: this.compile(node.arguments[0]),
+						right: this.compile(node.arguments[1]),
+					};
+			}
+		}
 	}
 }

@@ -92,9 +92,6 @@ export const Op = {
 
 	CALL_DYN: 66,
 
-	// multithreading
-	// FUCK NO WE ARE NOT DOING MULTITHREADING
-
 	// Runtime code manipulation
 	//CODE_ADD: 67, // pops the latest 2 values in stack. [address, value] RIGHT IS LATEST. then put in in code staging buffer
 	//CODE_COMMIT: 68, // Changes CODE and resets everything to a clean slate, except for memory address 1 to communicate some data over

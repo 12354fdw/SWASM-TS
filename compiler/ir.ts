@@ -26,9 +26,11 @@ type binary_operations =
 	| "bxor"
 	| "shl"
 	| "shr"
-	| "assign";
+	| "assign"
+	| "min"
+	| "max";
 
-type unary_operations = "neg" | "not" | "bnot" | "num_to_bool" | "bool_to_num";
+type unary_operations = "neg" | "not" | "bnot" | "num_to_bool" | "bool_to_num" | "abs" | "sqrt" | "floor" | "ceil";
 // FYI: NEGATE IS INVERTING SIGN
 // 		NOT IS INVERTING BOOLEANS
 

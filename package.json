@@ -4,12 +4,11 @@
   "description": "TypeScript to SWASM bytecode compiler",
   "main": "dist/index.js",
   "bin": {
-    "swasm": "dist/index.js"
+    "swasm": "dist/compiler/compiler.js"
   },
   "scripts": {
-    "compileAI": "ts-node compiler-AI/index.ts",
-    "disassembleAI": "ts-node compiler-AI/disassembleTool.ts",
-    "compiler": "ts-node compiler/compiler.ts"
+    "compiler": "ts-node compiler/compiler.ts",
+	"build": "tsc"
   },
   "devDependencies": {
     "@types/node": "^20.19.39",

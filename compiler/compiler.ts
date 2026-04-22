@@ -7,6 +7,8 @@ import * as ts from "typescript";
 import chalk from "chalk";
 import { Codegen } from "./frontend";
 
+$info("SWASM Compiler v1.0.1 DEV1");
+
 const args = process.argv.slice(2);
 if (args.length === 0) {
 	$fatal("No arguments provided!");
@@ -25,33 +27,53 @@ $info(`Creating TS Program`);
 const TSProgram = ts.createProgram([sourceFile], {
 	target: ts.ScriptTarget.ES2025,
 	strict: true,
+	lib: ["lib.es5.d.ts"], // freestanding typescript lol
 	typeRoots: ["./compiler"],
 	types: ["swasm"],
+	skipLibCheck: true,
 });
 
 const diagnostics = ts.getPreEmitDiagnostics(TSProgram);
 
 let isThereError = false;
 
+function flattenDiagnosticMessageText(messageText: string | ts.DiagnosticMessageChain, indent: number = 0) {
+	if (typeof messageText === "string") {
+		return messageText;
+	}
+
+	let result = messageText.messageText;
+
+	if (messageText.next) {
+		result +=
+			"\n" +
+			messageText.next
+				.map((msg) => " ".repeat(indent + 2) + flattenDiagnosticMessageText(msg, indent + 2))
+				.join("\n");
+	}
+
+	return result;
+}
+
 if (diagnostics.length > 0) {
 	$warn("There are compile diagnostics!");
 	diagnostics.forEach((diagnostic: ts.Diagnostic) => {
 		switch (diagnostic.category) {
 			case ts.DiagnosticCategory.Error:
-				$custom(diagnostic.messageText.toString(), chalk.red("EROR"), "DIAGNOSTICS");
+				$custom(flattenDiagnosticMessageText(diagnostic.messageText), chalk.red("EROR"), "DIAGNOSTICS");
 				isThereError = true;
 				break;
 
 			case ts.DiagnosticCategory.Message:
-				$custom(diagnostic.messageText.toString(), chalk.green("MESG"), "DIAGNOSTICS");
+				$custom(flattenDiagnosticMessageText(diagnostic.messageText), chalk.green("MESG"), "DIAGNOSTICS");
 				break;
 
 			case ts.DiagnosticCategory.Suggestion:
-				$custom(diagnostic.messageText.toString(), chalk.blueBright("SUGG"), "DIAGNOSTICS");
+				$custom(flattenDiagnosticMessageText(diagnostic.messageText), chalk.blueBright("SUGG"), "DIAGNOSTICS");
 				break;
 
 			case ts.DiagnosticCategory.Warning:
-				$custom(diagnostic.messageText.toString(), chalk.yellow("WARN"), "DIAGNOSTICS");
+				$custom(flattenDiagnosticMessageText(diagnostic.messageText), chalk.yellow("WARN"), "DIAGNOSTICS");
 				break;
 		}
 	});

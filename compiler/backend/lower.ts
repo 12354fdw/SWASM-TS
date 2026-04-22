@@ -319,6 +319,8 @@ export class Lowerer {
 					case "or": this.emitter.emit(Op.OR); break;
 					case "shl": this.emitter.emit(Op.SHL); break;
 					case "shr": this.emitter.emit(Op.SHR); break;
+					case "max": this.emitter.emit(Op.MAX); break;
+					case "min": this.emitter.emit(Op.MIN); break;
 					case "assign": {
 						if (expr.left.type !== "local") throw Error("Unsupported assignment target");
 						this.lowerExpr(expr.right);
@@ -355,6 +357,10 @@ export class Lowerer {
 					case "neg": this.emitter.emit(Op.NEG); break;
 					case "not": this.emitter.emit(Op.NOT); break;
 					case "num_to_bool": this.emitter.emit(Op.NUM_TO_BOOL); break;
+					case "abs": this.emitter.emit(Op.ABS); break;
+					case "ceil": this.emitter.emit(Op.CEIL); break;
+					case "floor": this.emitter.emit(Op.FLOOR); break;
+					case "sqrt": this.emitter.emit(Op.SQRT); break;
 				}
 				/* eslint-enable prettier/prettier */
 
