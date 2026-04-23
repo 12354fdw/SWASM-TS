@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+
+<html lang="en">
+	<head>
+		<link rel="stylesheet" href="resources/index.css">
+	</head>
+	<body>
+		<h1 id="title" style="color: red;">Dump over Websocket viewer [COMPILING TYPESCRIPT SOURCE]</h1>
+
+		<div class="generic-container">
+			<p>Controls</p>
+			<button id="btn-record">record</button>
+			<button id="btn-stoprecord" disabled="true">stop recording</button>
+			<br>
+			<button disabled="true" id="cntrl-stepback">step back</button>
+			<button disabled="true" id="cntrl-step">step</button>
+			<button disabled="true" id="cntrl-stepover">step over</button>
+			<button disabled="true" id="cntrl-stepout">step out</button>
+		</div>
+
+		<div class="generic-container">
+			<p>General Information</p>
+			<h1 id="opcode">Opcode: ???</h1>
+			<p id="pc">PC: 0</p>
+			<p id="hlt">halted: false</p>
+		</div>
+
+		<div id="div-container">
+			<div class="display-div"> <p>stack</p> <ul id="stack-container"></ul> </div>
+			<div class="display-div"> <p>globals</p> <table id="globals-container"></table> </div>
+			<div class="display-div"> <p>local</p> <table id="local-container"></table> </div>
+			<div class="display-div"> <p>call stack</p> <ul id="callstack-container"></ul> </div>
+		</div>
+
+		<script type="module">
+			const titleEl = document.getElementById('title');
+			import { loadModule } from 'https://klesun.github.io/ts-browser/src/ts-browser.js';
+
+			const entryScriptPath = 'resources/src/index.ts';
+
+			const start = performance.now();
+
+			loadModule(entryScriptPath)
+				.then(indexModule => {
+					const end = performance.now();
+
+					console.log(`Compile time: ${(end - start).toFixed(2)} ms`);
+
+					titleEl.style.color = "limegreen";
+					titleEl.textContent = `Dump over Websocket viewer [READY in ${(end - start).toFixed(0)}ms]`;
+
+					return indexModule.default();
+				})
+				.catch(err => {
+					const end = performance.now();
+
+					console.log(`Compile failed after ${(end - start).toFixed(2)} ms`);
+
+					titleEl.style.color = "orange";
+					titleEl.textContent = `Dump over Websocket viewer [FAILED COMPILE in ${(end - start).toFixed(0)}ms]`;
+					console.error(err);
+				});
+		</script>
+	</body>
+</html>

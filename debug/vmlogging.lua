@@ -1,6 +1,4 @@
-function urlencode(str)
-    return string.gsub(str, "([^%w])", function(c)
-        return string.format("%%%02X", string.byte(c))
-    end)
-end
-function log(msg) async.httpGet(8080,"/log?msg="..urlencode(tostring(msg))) end
+function urlencode(s)return string.gsub(s,"([^%w])",function(c)return string.format("%%%02X",string.byte(c))end)end
+function serialize(t,d)d=d or 0;if d>3 then return'"..."'end;if type(t)=="table"then local p={}for k,v in pairs(t)do p[#p+1]='"'..tostring(k)..'":'..serialize(v,d+1)end;return"{"..table.concat(p,",").."}"elseif type(t)=="number"or type(t)=="boolean"then return tostring(t)elseif type(t)=="string"then return'"'..t..'"'else return'"'..tostring(t)..'"'end end
+function sendDump(op)local argc=OpOperand[op]or 0;local arg=nil;if argc>0 then arg=code[pc]end;local state='{'..'"pc":'..tostring(pc)..','..'"op":'..tostring(op)..','..'"arg":'..(arg and tostring(arg)or'null')..','..'"hlt":'..tostring(hlt)..','..'"stack":'..serialize(s)..','..'"locals":'..serialize(lm[lp])..','..'"globals":'..serialize(m)..','..'"cs":'..serialize(cs)..'}';async.httpGet(8080,"/dump?s="..urlencode(state))end
+function log(msg)async.httpGet(8080,"/log?msg="..urlencode(tostring(msg)))end

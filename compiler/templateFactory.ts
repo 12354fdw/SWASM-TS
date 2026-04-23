@@ -16,6 +16,11 @@ end`;
 export function generateVM(romtable: number[]) {
 	return `
 SPEED=100
+OpOperand={[3]=1,[4]=1,[5]=1,[6]=1,[7]=1,[8]=1,[9]=1,[10]=1,[15]=1,[16]=1,[17]=1,[18]=1,[19]=1,[20]=1,[21]=1,[54]=1,[55]=1,[56]=1,[57]=1,[59]=1,[60]=1,[65]=1}
+function urlencode(s)return string.gsub(s,"([^%w])",function(c)return string.format("%%%02X",string.byte(c))end)end
+function serialize(t,d)d=d or 0;if d>3 then return'"..."'end;if type(t)=="table"then local p={}for k,v in pairs(t)do p[#p+1]='"'..tostring(k)..'":'..serialize(v,d+1)end;return"{"..table.concat(p,",").."}"elseif type(t)=="number"or type(t)=="boolean"then return tostring(t)elseif type(t)=="string"then return'"'..t..'"'else return'"'..tostring(t)..'"'end end
+function sendDump(op)local argc=OpOperand[op]or 0;local arg=nil;if argc>0 then arg=code[pc]end;local state='{'..'"pc":'..tostring(pc)..','..'"op":'..tostring(op)..','..'"arg":'..(arg and tostring(arg)or'null')..','..'"hlt":'..tostring(hlt)..','..'"stack":'..serialize(s)..','..'"locals":'..serialize(lm[lp])..','..'"globals":'..serialize(m)..','..'"cs":'..serialize(cs)..'}';async.httpGet(8080,"/dump?s="..urlencode(state))end
+function log(msg)async.httpGet(8080,"/log?msg="..urlencode(tostring(msg)))end
 iN,iB,oN,oB=input.getNumber,input.getBool,output.setNumber,output.setBool
 code={}
 roms={${romtable.join(",")}}
@@ -113,7 +118,7 @@ if BOOT then
   return
 end
 for i=1,SPEED do
-	local op=code[pc]oN(31,pc)pc=pc+1 (o[op])()if hlt then return end
+	local op=code[pc]sendDump(op)pc=pc+1 (o[op])()if hlt then return end
 end
 end`;
 }
